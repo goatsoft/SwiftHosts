@@ -2,8 +2,10 @@ import SwiftUI
 
 struct AppSettingsView: View {
     private enum Tabs: Hashable {
-        case general, backups, about
+        case general, security, backups
     }
+
+    @ObservedObject var hostsManager: HostsManager
 
     var body: some View {
         TabView {
@@ -13,20 +15,20 @@ struct AppSettingsView: View {
                 }
                 .tag(Tabs.general)
 
+            SecuritySettingsView(hostsManager: hostsManager)
+                .tabItem {
+                    Label("Security", systemImage: "lock.shield")
+                }
+                .tag(Tabs.security)
+
             BackupSettingsView()
                 .tabItem {
                     Label("Backups", systemImage: "arrow.triangle.2.circlepath")
                 }
                 .tag(Tabs.backups)
-
-            AboutSettingsView()
-                .tabItem {
-                    Label("About", systemImage: "info.circle")
-                }
-                .tag(Tabs.about)
         }
         .padding(20)
-        .frame(width: 500, height: 320)
+        .frame(width: 540, height: 340)
     }
 }
 
@@ -72,6 +74,53 @@ struct GeneralSettingsView: View {
     }
 }
 
+struct SecuritySettingsView: View {
+    @ObservedObject var hostsManager: HostsManager
+
+    var body: some View {
+        Form {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "lock.shield.fill")
+                            .font(.title2)
+                            .foregroundColor(hostsManager.isUnlocked ? .green : .orange)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Session Authorization")
+                                .fontWeight(.semibold)
+                            Text(hostsManager.isUnlocked ? "Session Unlocked (0 Prompts for Remaining Edits)" : "Session Locked")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+
+                        if hostsManager.isUnlocked {
+                            Button("Lock Session") {
+                                hostsManager.lockSession()
+                            }
+                            .buttonStyle(.bordered)
+                        } else {
+                            Text("Locked")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            } header: {
+                Text("App Session Security")
+            } footer: {
+                Text("Apple Session Authorization: Prompts for password ONCE on initial save. While SwiftHosts stays open, all subsequent edits save with 0 prompts. Password is wiped from memory upon quitting or locking session.")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
 struct BackupSettingsView: View {
     @State private var backupCount: Int = 0
     @State private var statusText: String = ""
@@ -109,36 +158,6 @@ struct BackupSettingsView: View {
     }
 }
 
-struct AboutSettingsView: View {
-    var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "network.badge.shield.half.filled")
-                .font(.system(size: 56))
-                .foregroundColor(.accentColor)
-
-            Text("SwiftHosts")
-                .font(.title)
-                .fontWeight(.bold)
-
-            Text("Version 1.0.0 (Native SwiftUI)")
-                .font(.callout)
-                .foregroundColor(.secondary)
-
-            Divider()
-                .frame(width: 300)
-
-            Text("Re-created as a modern macOS application inspired by the classic Hosts.prefpane preference pane.")
-                .font(.caption)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 30)
-
-            Spacer()
-        }
-        .padding(.top, 20)
-    }
-}
-
 #Preview {
-    AppSettingsView()
+    AppSettingsView(hostsManager: HostsManager())
 }

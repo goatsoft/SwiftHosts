@@ -28,6 +28,10 @@ struct HostEntry: Identifiable, Codable, Hashable, Equatable {
         self.category = category.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Custom" : category
     }
 
+    var isEnabledSortKey: Int {
+        isEnabled ? 1 : 0
+    }
+
     /// Validates if the IP address is a valid IPv4 or IPv6 string.
     var isValidIP: Bool {
         let trimmed = ipAddress.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -3,32 +3,22 @@ import SwiftUI
 struct HostDetailInspector: View {
     let entry: HostEntry
     @ObservedObject var hostsManager: HostsManager
-    let onEdit: (HostEntry) -> Void
 
-    @State private var pingResult: String? = nil
-    @State private var isTestingConnection: Bool = false
+    var catColor: Color {
+        hostsManager.categoryColor(for: entry.category)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Header
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(entry.hostname)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Text(entry.ipAddress)
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
+            VStack(alignment: .leading, spacing: 4) {
+                Text(entry.hostname)
+                    .font(.title2)
+                    .fontWeight(.bold)
                 
-                Button {
-                    onEdit(entry)
-                } label: {
-                    Image(systemName: "pencil")
-                }
-                .buttonStyle(.bordered)
+                Text(entry.ipAddress)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(.secondary)
             }
 
             Divider()
@@ -54,10 +44,12 @@ struct HostDetailInspector: View {
                     Spacer()
                     Text(entry.category)
                         .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.accentColor.opacity(0.15)))
-                        .foregroundColor(.accentColor)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(catColor.opacity(0.18)))
+                        .overlay(Capsule().stroke(catColor.opacity(0.5), lineWidth: 1))
+                        .foregroundColor(catColor)
                 }
 
                 HStack {

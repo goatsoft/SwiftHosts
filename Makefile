@@ -22,12 +22,14 @@ release:
 	xcodebuild -project SwiftHosts.xcodeproj -scheme SwiftHosts -configuration Release \
 	  -derivedDataPath $(DERIVED) -destination 'platform=macOS,arch=arm64' ARCHS=arm64 \
 	  ENABLE_HARDENED_RUNTIME=YES \
+	  CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
+	  CODE_SIGN_STYLE=Manual \
 	  CODE_SIGN_IDENTITY="$(RELEASE_SIGNING_IDENTITY)" \
 	  DEVELOPMENT_TEAM="$(DEVELOPMENT_TEAM)" \
 	  OTHER_CODE_SIGN_FLAGS="$(if $(filter -,$(RELEASE_SIGNING_IDENTITY)),,--timestamp)" \
 	  build
 	@if [ -f scripts/check-release-signing.py ] && [ "$(RELEASE_SIGNING_IDENTITY)" != "-" ]; then \
-	  python3 scripts/check-release-signing.py --verify "$(APP)"; \
+	  DEVELOPMENT_TEAM="$(DEVELOPMENT_TEAM)" CODE_SIGN_IDENTITY="$(RELEASE_SIGNING_IDENTITY)" python3 scripts/check-release-signing.py --verify "$(APP)"; \
 	fi
 
 dmg: release

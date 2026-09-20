@@ -18,8 +18,8 @@ REQUIRED = (
 
 
 def validate_publisher(identity, team):
-    if not re.fullmatch(r"[A-Z0-9]{10}", team):
-        raise ValueError("APPLE_TEAM_ID must contain 10 uppercase letters or digits")
+    if not team or not re.fullmatch(r"[A-Z0-9]{10}", team):
+        raise ValueError("APPLE_TEAM_ID / DEVELOPMENT_TEAM must contain 10 uppercase letters or digits")
     if not identity.startswith("Developer ID Application: ") or not identity.endswith(f"({team})"):
         raise ValueError("CODE_SIGN_IDENTITY must be a Developer ID Application identity matching APPLE_TEAM_ID")
 
@@ -28,7 +28,8 @@ def validate_configuration(env):
     missing = [name for name in REQUIRED if not env.get(name, "").strip()]
     if missing:
         raise ValueError("missing release secrets: " + ", ".join(missing))
-    validate_publisher(env["CODE_SIGN_IDENTITY"], env["APPLE_TEAM_ID"])
+    team = env.get("APPLE_TEAM_ID") or env.get("DEVELOPMENT_TEAM", "")
+    validate_publisher(env["CODE_SIGN_IDENTITY"], team)
     try:
         certificate = base64.b64decode("".join(env["MACOS_CERTIFICATE"].split()), validate=True)
     except (ValueError, binascii.Error):
@@ -75,9 +76,9 @@ def main():
             details = subprocess.run(
                 ["codesign", "-d", "--verbose=4", str(args.verify)],
                 check=True, capture_output=True, text=True)
-            validate_signature(
-                details.stderr, os.environ.get("CODE_SIGN_IDENTITY", ""),
-                os.environ.get("APPLE_TEAM_ID") or os.environ.get("DEVELOPMENT_TEAM", ""))
+            team = os.environ.get("APPLE_TEAM_ID") or os.environ.get("DEVELOPMENT_TEAM", "")
+            identity = os.environ.get("CODE_SIGN_IDENTITY") or os.environ.get("RELEASE_SIGNING_IDENTITY", "")
+            validate_signature(details.stderr, identity, team)
             entitlements = subprocess.run(
                 ["codesign", "-d", "--entitlements", "-", "--xml", str(args.verify)],
                 check=True, capture_output=True)

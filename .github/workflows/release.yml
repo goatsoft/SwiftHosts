@@ -30,31 +30,36 @@ jobs:
         run: sudo xcode-select -switch /Applications/Xcode.app
 
       - name: Import Signing Certificate (if available)
-        if: secrets.MACOS_CERTIFICATE != ''
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
         run: |
-          KEYCHAIN="$RUNNER_TEMP/swifthosts.keychain-db"
-          security create-keychain -p "" "$KEYCHAIN"
-          security set-key-chain-settings "$KEYCHAIN"
-          security unlock-keychain -p "" "$KEYCHAIN"
-          printf '%s' "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" \
-            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security list-keychains -d user -s "$KEYCHAIN" "$HOME/Library/Keychains/login.keychain-db"
-          security set-key-partition-list -S apple-tool:,apple: -k "" "$KEYCHAIN"
-          rm -f "$RUNNER_TEMP/cert.p12"
+          if [ -n "$MACOS_CERTIFICATE" ]; then
+            KEYCHAIN="$RUNNER_TEMP/swifthosts.keychain-db"
+            security create-keychain -p "" "$KEYCHAIN"
+            security set-key-chain-settings "$KEYCHAIN"
+            security unlock-keychain -p "" "$KEYCHAIN"
+            printf '%s' "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+            security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" \
+              -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+            security list-keychains -d user -s "$KEYCHAIN" "$HOME/Library/Keychains/login.keychain-db"
+            security set-key-partition-list -S apple-tool:,apple: -k "" "$KEYCHAIN"
+            rm -f "$RUNNER_TEMP/cert.p12"
+          else
+            echo "No signing certificate provided; continuing in ad-hoc mode."
+          fi
 
       - name: Validate Signing Configuration (if enabled)
-        if: secrets.MACOS_CERTIFICATE != ''
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: python3 scripts/check-release-signing.py
+        run: |
+          if [ -n "$MACOS_CERTIFICATE" ]; then
+            python3 scripts/check-release-signing.py
+          fi
 
       - name: Build Release App
         env:
@@ -88,8 +93,12 @@ jobs:
           fi
 
       - name: Verify Signed Artifact (if signed)
-        if: secrets.MACOS_CERTIFICATE != ''
-        run: python3 scripts/check-release-signing.py --verify .build/DerivedData/Build/Products/Release/SwiftHosts.app
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+        run: |
+          if [ -n "$MACOS_CERTIFICATE" ]; then
+            python3 scripts/check-release-signing.py --verify .build/DerivedData/Build/Products/Release/SwiftHosts.app
+          fi
 
       - name: Package DMG & ZIP Releases
         run: |
@@ -110,7 +119,6 @@ jobs:
           shasum -a 256 "SwiftHosts-${VERSION}.dmg" "$ZIP_NAME" > SHA256SUMS.txt
 
       - name: Notarize Official DMG Release (if credentials present)
-        if: secrets.NOTARY_APPLE_ID != ''
         env:
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}

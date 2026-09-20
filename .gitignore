@@ -18,6 +18,9 @@ dist/
 !default.perspectivev3
 xcuserdata/
 
+# Local signing configuration (ignored, private keys stay in macOS Keychain)
+signing.local.mk
+
 # Editor / Tools
 .vscode/
 .idea/

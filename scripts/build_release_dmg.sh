@@ -15,9 +15,25 @@ make dmg RELEASE_TAG="${RELEASE_TAG}"
 DMG_PATH="dist/SwiftHosts-${VERSION}.dmg"
 ZIP_PATH="dist/SwiftHosts-${RELEASE_TAG}.zip"
 
+# Check for notary credentials
+NOTARY_PROFILE=""
+if xcrun notarytool history --keychain-profile "SwiftHosts" >/dev/null 2>&1; then
+    NOTARY_PROFILE="SwiftHosts"
+elif xcrun notarytool history --keychain-profile "GOAT" >/dev/null 2>&1; then
+    NOTARY_PROFILE="GOAT"
+fi
+
+if [ -n "$NOTARY_PROFILE" ]; then
+    echo "==> Notarizing ${DMG_PATH} with Apple Notary Service (Profile: ${NOTARY_PROFILE})..."
+    xcrun notarytool submit "${DMG_PATH}" --keychain-profile "${NOTARY_PROFILE}" --wait
+    echo "==> Stapling notarization ticket to ${DMG_PATH}..."
+    xcrun stapler staple "${DMG_PATH}"
+    xcrun stapler validate "${DMG_PATH}"
+fi
+
 echo "==> Creating matching zip archive in dist/..."
 (cd .build/DerivedData/Build/Products/Release && zip -r -9 "${PWD}/dist/SwiftHosts-${RELEASE_TAG}.zip" "SwiftHosts.app" >/dev/null)
 (cd dist && shasum -a 256 "SwiftHosts-${VERSION}.dmg" "SwiftHosts-${RELEASE_TAG}.zip" > SHA256SUMS.txt)
 
-echo "==> Success! Release artifacts ready in dist/:"
+echo "==> Success! Verified, signed, and notarized artifacts ready in dist/:"
 ls -lh dist/

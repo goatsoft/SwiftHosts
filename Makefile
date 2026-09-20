@@ -33,7 +33,7 @@ release:
 	fi
 
 dmg: release
-	RELEASE_TAG="$(RELEASE_TAG)" APP="$(APP)" DIST="$(DIST)" ./scripts/package-dmg.sh
+	RELEASE_TAG="$(RELEASE_TAG)" APP="$(APP)" DIST="$(DIST)" RELEASE_SIGNING_IDENTITY="$(RELEASE_SIGNING_IDENTITY)" ./scripts/package-dmg.sh
 
 clean:
 	rm -rf .build $(DIST)

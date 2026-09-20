@@ -31,11 +31,25 @@ This project includes and uses **[`OKLabColorPicker`](https://github.com/goatsof
 
 ---
 
-## 📝 Release Notes (v0.1.1)
+## 🚀 Release Notes (v0.1.1)
 
-- **OKLabColorPicker Package Integration**: Released **`OKLabColorPicker` v0.1.1** on GitHub (`GOATsoft/OKLabColorPicker`), complete with official logo branding, test suite, and SPM package manifest.
-- **Icon Branding**: Added high-resolution OKLab color wheel icon asset (`OKLabIcon`) and README visual header.
-- **Package Release**: Updated Swift Package dependency references and documentation to `0.1.1`.
+### 🎨 Standalone `OKLabColorPicker` Package Release
+- **GitHub Release (v0.1.1)**: Officially published [`GOATsoft/OKLabColorPicker`](https://github.com/goatsoft/OKLabColorPicker.git) as an open-source Swift Package (macOS 14+, iOS 17+, visionOS 1+, watchOS 10+, tvOS 17+).
+- **Brand Assets & Iconography**: Created and bundled high-resolution macOS glassmorphism OKLab color wheel icon assets (`OKLabIcon`) and README visual header.
+
+### 🎡 Perceptual OKLab/OKLCH Engine Features
+- **4 Selection Modes**:
+  1. **OKLCH Color Wheel** (`.polarOKLCH`): Smooth 2D radial polar wheel for Chroma & Hue angle with hero glow and real-time lightness slider.
+  2. **Cartesian OKLab Sliders** (`.cartesianOKLab`): Precision controls for $L$ (Lightness), $a$ (Green–Red axis), and $b$ (Blue–Yellow axis).
+  3. **Perceptual Swatches** (`.perceptualSwatches`): Curated palette of perceptually balanced OKLab color badges.
+  4. **Color Harmonies Generator** (`.colorHarmonies`): Automatic generation of complementary, triadic, and analogous ($\pm 30^\circ$) color palettes.
+- **WCAG 2.1 Contrast Analytics**: Built-in methods to calculate relative luminance, contrast ratios ($1:1$ to $21:1$), and AA/AAA accessibility compliance.
+- **Hex Code Synchronization**: Real-time `#HEX` string parsing, monospaced readout pill, and bidirectional state synchronization.
+
+### 🛠️ SwiftHosts UI & UX Improvements
+- **Category Badge Color Customization**: Integrated the OKLab color picker directly into category creation and customization sheets.
+- **Xcode Asset Catalog**: Added `OKLabIcon.imageset` to `Assets.xcassets`.
+- **Unit Test Coverage**: Automated test suite verifying OKLab $\leftrightarrow$ sRGB conversions, polar coordinate math, hex parsing, color harmonies, and contrast ratios.
 
 ---
 

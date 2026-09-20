@@ -30,7 +30,7 @@ jobs:
         run: sudo xcode-select -switch /Applications/Xcode.app
 
       - name: Import Signing Certificate (if available)
-        if: ${{ secrets.MACOS_CERTIFICATE != '' }}
+        if: secrets.MACOS_CERTIFICATE != ''
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -47,7 +47,7 @@ jobs:
           rm -f "$RUNNER_TEMP/cert.p12"
 
       - name: Validate Signing Configuration (if enabled)
-        if: ${{ secrets.MACOS_CERTIFICATE != '' }}
+        if: secrets.MACOS_CERTIFICATE != ''
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -57,8 +57,10 @@ jobs:
         run: python3 scripts/check-release-signing.py
 
       - name: Build Release App
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
         run: |
-          if [ -n "${{ secrets.MACOS_CERTIFICATE }}" ]; then
+          if [ -n "$MACOS_CERTIFICATE" ]; then
             xcodebuild -project SwiftHosts.xcodeproj \
               -scheme SwiftHosts \
               -configuration Release \
@@ -86,7 +88,7 @@ jobs:
           fi
 
       - name: Verify Signed Artifact (if signed)
-        if: ${{ secrets.MACOS_CERTIFICATE != '' }}
+        if: secrets.MACOS_CERTIFICATE != ''
         run: python3 scripts/check-release-signing.py --verify .build/DerivedData/Build/Products/Release/SwiftHosts.app
 
       - name: Package DMG & ZIP Releases
@@ -108,7 +110,7 @@ jobs:
           shasum -a 256 "SwiftHosts-${VERSION}.dmg" "$ZIP_NAME" > SHA256SUMS.txt
 
       - name: Notarize Official DMG Release (if credentials present)
-        if: ${{ secrets.NOTARY_APPLE_ID != '' }}
+        if: secrets.NOTARY_APPLE_ID != ''
         env:
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
@@ -127,7 +129,7 @@ jobs:
             dist/SHA256SUMS.txt
 
       - name: Clean Temporary Keychains
-        if: ${{ always() }}
+        if: always()
         run: |
           rm -f "$RUNNER_TEMP/cert.p12"
           if [ -f "$RUNNER_TEMP/swifthosts.keychain-db" ]; then

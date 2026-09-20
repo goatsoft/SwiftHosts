@@ -1,5 +1,4 @@
 import SwiftUI
-import CoreGraphics
 
 public enum OKLabPickerMode: String, CaseIterable, Identifiable, Sendable {
     case polarOKLCH = "OKLCH (Wheel)"
@@ -19,42 +18,149 @@ public enum OKLabPickerMode: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-public enum OKLabPickerStyle: Hashable {
-    case compact
-    case inline
-    case card
-    case popover
-}
+/// Configuration object for customizing the `OKLabColorPicker` behavior, presentation style, and feature set.
+public struct OKLabPickerConfiguration: Sendable, Equatable, Hashable {
+    /// Style of the color picker component
+    public enum Style: Sendable {
+        case inline
+        case compact
+        case card
+    }
 
-public struct OKLabPickerConfiguration: Hashable {
-    public var style: OKLabPickerStyle
+    public var style: Style
     public var title: String?
     public var showHeader: Bool
     public var showHexInput: Bool
-    public var showColorMetrics: Bool
     public var showAlphaSlider: Bool
+    public var showColorMetrics: Bool
+    public var showColorHarmonies: Bool
+    public var showPresetsGrid: Bool
     public var allowedModes: [OKLabPickerMode]
+    public var customPresets: [OKLabColorValue]
 
     public init(
-        style: OKLabPickerStyle = .inline,
-        title: String? = "OKLab Color Picker",
+        style: Style = .inline,
+        title: String? = "OKLab Color",
         showHeader: Bool = true,
         showHexInput: Bool = true,
-        showColorMetrics: Bool = true,
         showAlphaSlider: Bool = false,
-        allowedModes: [OKLabPickerMode] = OKLabPickerMode.allCases
+        showColorMetrics: Bool = true,
+        showColorHarmonies: Bool = false,
+        showPresetsGrid: Bool = true,
+        allowedModes: [OKLabPickerMode] = OKLabPickerMode.allCases,
+        customPresets: [OKLabColorValue] = OKLabColorValue.presets
     ) {
         self.style = style
         self.title = title
         self.showHeader = showHeader
         self.showHexInput = showHexInput
-        self.showColorMetrics = showColorMetrics
         self.showAlphaSlider = showAlphaSlider
+        self.showColorMetrics = showColorMetrics
+        self.showColorHarmonies = showColorHarmonies
+        self.showPresetsGrid = showPresetsGrid
         self.allowedModes = allowedModes
+        self.customPresets = customPresets
     }
 
     public static let `default` = OKLabPickerConfiguration()
+
+    public static let compact = OKLabPickerConfiguration(
+        style: .compact,
+        title: nil,
+        showHeader: false,
+        showHexInput: false,
+        showColorHarmonies: false
+    )
+
+    public static let full = OKLabPickerConfiguration(
+        style: .card,
+        title: "OKLab Color",
+        showHeader: true,
+        showHexInput: true,
+        showAlphaSlider: true,
+        showColorMetrics: true,
+        showColorHarmonies: true,
+        showPresetsGrid: true
+    )
 }
+import SwiftUI
+
+/// A ready-to-use color picker button that displays a live color swatch and opens an OKLab color picker popover/dialog.
+public struct OKLabColorPickerButton: View {
+    @Binding public var color: OKLabColorValue
+    public var label: String?
+    public var configuration: OKLabPickerConfiguration
+
+    @State private var isPickerPresented: Bool = false
+
+    public init(
+        color: Binding<OKLabColorValue>,
+        label: String? = nil,
+        configuration: OKLabPickerConfiguration = .default
+    ) {
+        self._color = color
+        self.label = label
+        self.configuration = configuration
+    }
+
+    public var body: some View {
+        Button {
+            isPickerPresented.toggle()
+        } label: {
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(color.color)
+                    .frame(width: 22, height: 22)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.primary.opacity(0.15), lineWidth: 1)
+                    )
+
+                if let label = label {
+                    Text(label)
+                        .font(.body)
+                }
+
+                Text(color.hexString)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.primary.opacity(0.06))
+            )
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isPickerPresented, arrowEdge: .bottom) {
+            OKLabColorPicker(color: $color, configuration: configuration)
+                .frame(width: 320)
+        }
+    }
+}
+
+#Preview {
+    OKLabColorPickerButton(color: .constant(OKLabColorValue(lightness: 0.7, chroma: 0.18, hueDegrees: 240.0)), label: "Badge Color")
+        .padding(40)
+}
+import SwiftUI
+
+public extension View {
+    /// Presents an OKLab Color Picker popover attached to the current view.
+    func oklabColorPicker(
+        isPresented: Binding<Bool>,
+        color: Binding<OKLabColorValue>,
+        configuration: OKLabPickerConfiguration = .default
+    ) -> some View {
+        self.popover(isPresented: isPresented) {
+            OKLabColorPicker(color: color, configuration: configuration)
+                .frame(width: 320)
+        }
+    }
+}
+import SwiftUI
+import CoreGraphics
 
 public struct OKLabColorPicker: View {
     @Binding public var color: OKLabColorValue

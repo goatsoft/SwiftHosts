@@ -102,20 +102,21 @@ jobs:
 
       - name: Package DMG & ZIP Releases
         run: |
-          mkdir -p dist
+          DIST_DIR="$(pwd)/dist"
+          mkdir -p "$DIST_DIR"
           VERSION="${RELEASE_TAG#v}"
           
           # Build DMG image
-          ./scripts/package-dmg.sh
+          DIST="$DIST_DIR" ./scripts/package-dmg.sh
           
           # Build ZIP archive
           ZIP_NAME="SwiftHosts-${RELEASE_TAG}.zip"
           cd .build/DerivedData/Build/Products/Release
-          zip -r -9 "../../../../dist/$ZIP_NAME" "SwiftHosts.app"
+          zip -r -9 "$DIST_DIR/$ZIP_NAME" "SwiftHosts.app"
           cd -
           
           # Generate Checksums
-          cd dist
+          cd "$DIST_DIR"
           shasum -a 256 "SwiftHosts-${VERSION}.dmg" "$ZIP_NAME" > SHA256SUMS.txt
 
       - name: Notarize Official DMG Release (if credentials present)

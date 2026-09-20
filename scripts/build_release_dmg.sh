@@ -1,41 +1,23 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 VERSION=$(git grep -h "MARKETING_VERSION =" SwiftHosts.xcodeproj/project.pbxproj | head -n 1 | awk '{print $3}' | tr -d ';')
 if [ -z "$VERSION" ]; then
     VERSION="0.1.1"
 fi
+RELEASE_TAG="v${VERSION}"
 
-echo "==> Building SwiftHosts v${VERSION} Release DMG..."
+echo "==> Building SwiftHosts ${RELEASE_TAG} Release via Makefile (Developer ID Signed)..."
 
-rm -rf build SwiftHosts-*.dmg
-xcodebuild -project SwiftHosts.xcodeproj -scheme SwiftHosts -configuration Release -derivedDataPath ./build build -quiet
+make clean
+make dmg RELEASE_TAG="${RELEASE_TAG}"
 
-APP_PATH="./build/Build/Products/Release/SwiftHosts.app"
+DMG_PATH="dist/SwiftHosts-${VERSION}.dmg"
+ZIP_PATH="dist/SwiftHosts-${RELEASE_TAG}.zip"
 
-if [ ! -d "$APP_PATH" ]; then
-    echo "Error: SwiftHosts.app build failed."
-    exit 1
-fi
+echo "==> Creating matching zip archive in dist/..."
+(cd .build/DerivedData/Build/Products/Release && zip -r -9 "${PWD}/dist/SwiftHosts-${RELEASE_TAG}.zip" "SwiftHosts.app" >/dev/null)
+(cd dist && shasum -a 256 "SwiftHosts-${VERSION}.dmg" "SwiftHosts-${RELEASE_TAG}.zip" > SHA256SUMS.txt)
 
-echo "==> Clearing quarantine attributes..."
-xattr -cr "$APP_PATH"
-
-echo "==> Ad-hoc signing app bundle..."
-codesign --force --deep --options runtime --sign - "$APP_PATH"
-
-DMG_NAME="SwiftHosts-v${VERSION}.dmg"
-STAGING_DIR="./build/DMG_Staging"
-rm -rf "$STAGING_DIR" "$DMG_NAME"
-mkdir -p "$STAGING_DIR"
-
-cp -R "$APP_PATH" "$STAGING_DIR/"
-ln -s /Applications "$STAGING_DIR/Applications"
-
-echo "==> Packaging into ${DMG_NAME}..."
-hdiutil create -volname "SwiftHosts" -srcfolder "$STAGING_DIR" -ov -format UDZO "$DMG_NAME" -quiet
-
-codesign --force --sign - "$DMG_NAME"
-
-rm -rf "$STAGING_DIR"
-echo "==> Success! Release DMG created at ${DMG_NAME} (Version: ${VERSION})"
+echo "==> Success! Release artifacts ready in dist/:"
+ls -lh dist/

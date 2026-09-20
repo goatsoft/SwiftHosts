@@ -30,6 +30,9 @@ IDENTITY="${RELEASE_SIGNING_IDENTITY:-${CODE_SIGN_IDENTITY:-}}"
 if [ -n "$IDENTITY" ] && [ "$IDENTITY" != "-" ]; then
     echo "Signing DMG image with identity: $IDENTITY..."
     codesign -s "$IDENTITY" --timestamp "$DMG_PATH"
+else
+    echo "Ad-hoc signing DMG image..."
+    codesign --force --sign - "$DMG_PATH"
 fi
 
 echo "Created DMG: $DMG_PATH"

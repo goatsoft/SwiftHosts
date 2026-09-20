@@ -87,8 +87,8 @@ jobs:
               -destination 'platform=macOS,arch=arm64' \
               ARCHS=arm64 \
               CODE_SIGN_IDENTITY="-" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=YES \
+              CODE_SIGNING_ALLOWED=YES \
               build
           fi
 
@@ -127,15 +127,23 @@ jobs:
           ARTIFACT: "dist/SwiftHosts-${RELEASE_TAG#v}.dmg"
         run: ./scripts/notarize.sh
 
-      - name: Create GitHub Release
+      - name: Create or Update GitHub Release
         run: |
           VERSION="${RELEASE_TAG#v}"
-          gh release create "${RELEASE_TAG}" \
-            --title "SwiftHosts ${RELEASE_TAG}" \
-            --generate-notes \
-            "dist/SwiftHosts-${VERSION}.dmg" \
-            "dist/SwiftHosts-${RELEASE_TAG}.zip" \
-            dist/SHA256SUMS.txt
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Release ${RELEASE_TAG} exists; uploading artifacts..."
+            gh release upload "${RELEASE_TAG}" --clobber \
+              "dist/SwiftHosts-${VERSION}.dmg" \
+              "dist/SwiftHosts-${RELEASE_TAG}.zip" \
+              dist/SHA256SUMS.txt
+          else
+            gh release create "${RELEASE_TAG}" \
+              --title "SwiftHosts ${RELEASE_TAG}" \
+              --generate-notes \
+              "dist/SwiftHosts-${VERSION}.dmg" \
+              "dist/SwiftHosts-${RELEASE_TAG}.zip" \
+              dist/SHA256SUMS.txt
+          fi
 
       - name: Clean Temporary Keychains
         if: always()

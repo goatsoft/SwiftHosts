@@ -87,30 +87,40 @@ jobs:
         if: ${{ secrets.MACOS_CERTIFICATE != '' }}
         run: python3 scripts/check-release-signing.py --verify .build/DerivedData/Build/Products/Release/SwiftHosts.app
 
-      - name: Package Release Archive & Checksums
+      - name: Package DMG & ZIP Releases
         run: |
           mkdir -p dist
+          VERSION="${RELEASE_TAG#v}"
+          
+          # Build DMG image
+          ./scripts/package-dmg.sh
+          
+          # Build ZIP archive
           ZIP_NAME="SwiftHosts-${RELEASE_TAG}.zip"
           cd .build/DerivedData/Build/Products/Release
           zip -r -9 "../../../../dist/$ZIP_NAME" "SwiftHosts.app"
           cd -
+          
+          # Generate Checksums
           cd dist
-          shasum -a 256 "$ZIP_NAME" > SHA256SUMS.txt
+          shasum -a 256 "SwiftHosts-${VERSION}.dmg" "$ZIP_NAME" > SHA256SUMS.txt
 
-      - name: Notarize Official Release (if credentials present)
+      - name: Notarize Official DMG Release (if credentials present)
         if: ${{ secrets.NOTARY_APPLE_ID != '' }}
         env:
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          ARTIFACT: "dist/SwiftHosts-${RELEASE_TAG}.zip"
+          ARTIFACT: "dist/SwiftHosts-${RELEASE_TAG#v}.dmg"
         run: ./scripts/notarize.sh
 
       - name: Create GitHub Release
         run: |
+          VERSION="${RELEASE_TAG#v}"
           gh release create "${RELEASE_TAG}" \
             --title "SwiftHosts ${RELEASE_TAG}" \
             --generate-notes \
+            "dist/SwiftHosts-${VERSION}.dmg" \
             "dist/SwiftHosts-${RELEASE_TAG}.zip" \
             dist/SHA256SUMS.txt
 

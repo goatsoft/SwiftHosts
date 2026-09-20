@@ -17,6 +17,9 @@ jobs:
     runs-on: macos-15
     env:
       GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.ref_name }}
+      CODE_SIGN_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+      DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,34 +29,95 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -switch /Applications/Xcode.app
 
+      - name: Import Signing Certificate (if available)
+        if: ${{ secrets.MACOS_CERTIFICATE != '' }}
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/swifthosts.keychain-db"
+          security create-keychain -p "" "$KEYCHAIN"
+          security set-key-chain-settings "$KEYCHAIN"
+          security unlock-keychain -p "" "$KEYCHAIN"
+          printf '%s' "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security list-keychains -d user -s "$KEYCHAIN" "$HOME/Library/Keychains/login.keychain-db"
+          security set-key-partition-list -S apple-tool:,apple: -k "" "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Validate Signing Configuration (if enabled)
+        if: ${{ secrets.MACOS_CERTIFICATE != '' }}
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: python3 scripts/check-release-signing.py
+
       - name: Build Release App
         run: |
-          xcodebuild -project SwiftHosts.xcodeproj \
-            -scheme SwiftHosts \
-            -configuration Release \
-            -derivedDataPath .build/DerivedData \
-            -destination 'platform=macOS,arch=arm64' \
-            ARCHS=arm64 \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_ENTITLEMENTS="" \
-            CODE_SIGNING_ALLOWED=NO \
-            build
+          if [ -n "${{ secrets.MACOS_CERTIFICATE }}" ]; then
+            xcodebuild -project SwiftHosts.xcodeproj \
+              -scheme SwiftHosts \
+              -configuration Release \
+              -derivedDataPath .build/DerivedData \
+              -destination 'platform=macOS,arch=arm64' \
+              ARCHS=arm64 \
+              ENABLE_HARDENED_RUNTIME=YES \
+              CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" \
+              DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
+              OTHER_CODE_SIGN_FLAGS="--timestamp" \
+              build
+          else
+            xcodebuild -project SwiftHosts.xcodeproj \
+              -scheme SwiftHosts \
+              -configuration Release \
+              -derivedDataPath .build/DerivedData \
+              -destination 'platform=macOS,arch=arm64' \
+              ARCHS=arm64 \
+              CODE_SIGN_IDENTITY="-" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              build
+          fi
 
-      - name: Package Application Artifacts
+      - name: Verify Signed Artifact (if signed)
+        if: ${{ secrets.MACOS_CERTIFICATE != '' }}
+        run: python3 scripts/check-release-signing.py --verify .build/DerivedData/Build/Products/Release/SwiftHosts.app
+
+      - name: Package Release Archive & Checksums
         run: |
           mkdir -p dist
-          ZIP_NAME="SwiftHosts-${{ github.ref_name }}.zip"
+          ZIP_NAME="SwiftHosts-${RELEASE_TAG}.zip"
           cd .build/DerivedData/Build/Products/Release
           zip -r -9 "../../../../dist/$ZIP_NAME" "SwiftHosts.app"
           cd -
           cd dist
           shasum -a 256 "$ZIP_NAME" > SHA256SUMS.txt
 
+      - name: Notarize Official Release (if credentials present)
+        if: ${{ secrets.NOTARY_APPLE_ID != '' }}
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ARTIFACT: "dist/SwiftHosts-${RELEASE_TAG}.zip"
+        run: ./scripts/notarize.sh
+
       - name: Create GitHub Release
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "SwiftHosts ${{ github.ref_name }}" \
+          gh release create "${RELEASE_TAG}" \
+            --title "SwiftHosts ${RELEASE_TAG}" \
             --generate-notes \
-            dist/SwiftHosts-${{ github.ref_name }}.zip \
+            "dist/SwiftHosts-${RELEASE_TAG}.zip" \
             dist/SHA256SUMS.txt
+
+      - name: Clean Temporary Keychains
+        if: ${{ always() }}
+        run: |
+          rm -f "$RUNNER_TEMP/cert.p12"
+          if [ -f "$RUNNER_TEMP/swifthosts.keychain-db" ]; then
+            security delete-keychain "$RUNNER_TEMP/swifthosts.keychain-db"
+          fi

@@ -6,6 +6,7 @@ build/
 DerivedData/
 .build/
 dist/
+*.dmg
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 *.pbxuser

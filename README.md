@@ -19,8 +19,8 @@
 
 ## ✨ Features
 
-- 🏷️ **Categorized Host Management**: Group entries into custom categories (*Local Dev*, *Staging*, *Blocking*, *Production*) with OKLab perceptual color badges.
-- 🎨 **Perceptual Color Engine**: Integrated 2D OKLCH color wheel, perceptual swatches, and live `#HEX` synchronization.
+- 🏷️ **Categorized Host Management**: Group entries into custom categories (*Local Dev*, *Staging*, *Blocking*, *Production*) with color badges.
+- 🎨 **Category Color Customization**: Integrated color wheel, swatches, and hex synchronization for category styling.
 - 🔒 **Secure Authorization**: Seamless session authentication to safely save changes to protected `/etc/hosts` without running as root.
 - 🔍 **Instant Search & Filter**: Real-time hostname, IP, and notes filtering with multi-column sorting.
 - 📥 **Import & Export**: Effortlessly import or export hosts configurations in standard hosts file format.
@@ -51,10 +51,9 @@ Build and run using `⌘R` in Xcode.
 
 ## 🏗️ Architecture Overview
 
-- **`Domain/Models/`**: Core domain data models including `HostEntry`, `OKLabColor` value representation, and `CategoryColorOption` presets.
+- **`Domain/Models/`**: Data models including `HostEntry` and `CategoryColorOption`.
 - **`Domain/Parser/HostsFileParser.swift`**: High-performance parser that preserves original comments, formatting, and entry order.
 - **`Domain/Services/HostsManager.swift`**: Observable state coordinator managing in-memory drafts, dirty row state tracking, and elevated privilege operations via `STPrivilegedTask` / `osascript`.
-- **`UI/Components/OKLabColorPickerView.swift`**: Perceptual OKLab/OKLCH color picker component for category badge customization.
 - **`UI/HostList/`**: Native macOS multi-column table grid (`HostListView`), inline editable cells, and right-click context menus.
 - **`UI/Sidebar/`**: Category navigation sidebar (`SidebarView`) with host entry counts and quick filter controls.
 
